@@ -1,0 +1,16 @@
+server:
+  port: 8282
+spring:
+  application:
+    name: springcloud-admin
+  security:
+    user:
+      name: admin
+      password: admin
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://admin:123456@localhost:8077/eureka/
+  instance:
+    hostname: localhost

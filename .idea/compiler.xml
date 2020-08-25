@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <module name="springcloud-dashboard" />
+        <module name="service-api" />
+        <module name="springcloud-zuul" />
+        <module name="springcloud-admin" />
+        <module name="micro-order" />
+        <module name="springcloud-eureka" />
+        <module name="springcloud-config-server" />
+        <module name="micro-product" />
+      </profile>
+    </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="micro-order" target="1.8" />
+      <module name="micro-product" target="1.8" />
+      <module name="service-api" target="1.8" />
+      <module name="springcloud-admin" target="1.8" />
+      <module name="springcloud-config-server" target="1.8" />
+      <module name="springcloud-dashboard" target="1.8" />
+      <module name="springcloud-eureka" target="1.8" />
+      <module name="springcloud-zuul" target="1.8" />
+    </bytecodeTargetLevel>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="micro-order" options="-parameters" />
+      <module name="micro-product" options="-parameters" />
+      <module name="service-api" options="-parameters" />
+      <module name="springcloud-admin" options="-parameters" />
+      <module name="springcloud-dashboard" options="-parameters" />
+      <module name="springcloud-eureka" options="-parameters" />
+      <module name="springcloud-zuul" options="-parameters" />
+    </option>
+  </component>
+</project>

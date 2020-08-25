@@ -1,0 +1,76 @@
+server:
+  port: 9080
+
+spring:
+  application:
+    name: springcloud-zuul
+  cloud:
+    config:
+      enabled: true
+#      discovery:
+#        enabled: false
+#        service-id: springcloud-config-server
+      uri: http://localhost:9090
+      name: zuul-config
+#      profile: dev
+      label: master
+      fail-fast: true
+      username: micwsx
+      password: 812857883*pk
+      #连接配置服务器重试配置
+      retry:
+        multiplier: 1.1
+        initial-interval: 1000
+        max-attempts: 6
+        max-interval: 2000
+    loadbalancer:
+      retry:
+        enabled: true
+  rabbitmq:
+    host: 192.168.1.111
+    port: 5672
+    username: michael
+    password: michael
+    virtual-host: my_vhost
+
+
+eureka:
+  client:
+    registry-fetch-interval-seconds: 30
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://admin:123456@localhost:8077/eureka/
+    healthcheck:
+      enabled: true
+  instance:
+    lease-expiration-duration-in-seconds: 5
+    lease-renewal-interval-in-seconds: 10
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+######hystrix配置##########
+hystrix:
+  command:
+    default:
+      execution:
+        isolation:
+          thread:
+            timeoutInMilliseconds: 5000
+###ribbon配置（或代码注解配置）####
+ribbon:
+  ConnectTimeout: 1000
+  ReadTimeout: 3000
+  OkToRetryOnAllOperations: true
+  MaxAutoRetriesNextServer: 2
+  MaxAutoRetries: 2
+
+
+#查看所有路由地址：http://localhost:9080/actuator/routes

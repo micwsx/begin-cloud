@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/begin-cloud.iml" filepath="$PROJECT_DIR$/.idea/begin-cloud.iml" />
+      <module fileurl="file://$PROJECT_DIR$/micro-order/micro-order.iml" filepath="$PROJECT_DIR$/micro-order/micro-order.iml" />
+      <module fileurl="file://$PROJECT_DIR$/micro-product/micro-product.iml" filepath="$PROJECT_DIR$/micro-product/micro-product.iml" />
+      <module fileurl="file://$PROJECT_DIR$/service-api/service-api.iml" filepath="$PROJECT_DIR$/service-api/service-api.iml" />
+      <module fileurl="file://$PROJECT_DIR$/springcloud-admin/springcloud-admin.iml" filepath="$PROJECT_DIR$/springcloud-admin/springcloud-admin.iml" />
+      <module fileurl="file://$PROJECT_DIR$/springcloud-config-server/springcloud-config-server.iml" filepath="$PROJECT_DIR$/springcloud-config-server/springcloud-config-server.iml" />
+      <module fileurl="file://$PROJECT_DIR$/springcloud-dashboard/springcloud-dashboard.iml" filepath="$PROJECT_DIR$/springcloud-dashboard/springcloud-dashboard.iml" />
+      <module fileurl="file://$PROJECT_DIR$/springcloud-eureka/springcloud-eureka.iml" filepath="$PROJECT_DIR$/springcloud-eureka/springcloud-eureka.iml" />
+      <module fileurl="file://$PROJECT_DIR$/springcloud-zuul/springcloud-zuul.iml" filepath="$PROJECT_DIR$/springcloud-zuul/springcloud-zuul.iml" />
+    </modules>
+  </component>
+</project>

@@ -1,0 +1,369 @@
+git地址：https://github.com/zg-jack/springcloud-vip-2
+命令：
+#指定端口运行
+java -jar xxx.jar --server.port=8090
+或在configuration的environment variable中设置server.port=8090
+#指定配置文件运行(有3个配置文件application.properties，application-8761.properties，application-8762.properties)
+java -jar springcloud-eureka-1.0.jar --spring.profiles.active=cluster-8078
+
+1.eureka环境搭建，服务注册和调用
+三个线程：获取eureka服务列表，注册服务和保持心跳线程。
+2.eureka登录认证
+3.客户端续约保活(心跳机制)-在客户端添加以下配置
+    eureka.instance.lease-renewal-interval-in-seconds=30
+    eureka.instance.lease-expiration-duration-in-seconds=90
+4.客户端健康检查-客户端有心跳但是存在健康问题（调用异常）
+    地址：http://localhost:port/actuator/health
+    eureka.client.healthcheck.enabled=true
+    导入actuator包,健康检查是Down，但是eureka并不会立刻变成down状态，而是过一段时间状态才变成down.
+5.服务意外down机-从服务列表中删除服务（默认90s后才删除）？
+    如果服务不可用，可以手工调用delete请求接口从服务列表中删除服务（Postman工具），注意：加入用户名和密码
+    http://localhost:8077/eureka/apps/MICRO-ORDER/localhost:micro-order:8084
+6.eureka高可用（热备份）
+    127.0.0.1       eureka-cluster1
+    127.0.0.1       eureka-cluster2
+    127.0.0.1       eureka-cluster3
+    eureka相互注册，集群。客户端注册到所有eureka后，其中eureka断了后，不影响客户端服务，
+    服务断开再注册也没有问题，即使有一个eureka断了。有意思的是，当全部eureka都断了，服务同样也可以调用成功，可能是服务本地有服务列表，发现请求不成功，直接获取目标服务地址发送请求。
+    eureka有个缺点：服务下线，不能及时通知调用方，出现服务短暂不能使用的情况。
+7.eurake自我保护模式（网络抖动可能没有心跳的客户端，过一小会儿就会删除服务，不会等待默认90s，建议开启）
+   服务端配置eureka.server.enable-self-preservation=false
+8.ribbon(组件，调用运程服务，如何调用，如何选择本地服务列表中调用)
+    @LoadBalanced
+    RestTemplate
+9.负载均衡（对ribbon的参数配置）
+    服务调用方通过配置文件设置（商品服务调用订单服务）商品服务需要配置
+    代码配置(在springboot扫描内，则是配置全局配置，若在扫描路径后，引用ribbon配置，则是部分服务ribbon配置)
+10.ribbon可以单独使用（脱离springcloud使用）
+11.Eureka配置类EurekaServerConfigBean/EurekaClientConfig(默认实现类DefaultEurekaClientConfig)
+
+1.Hystrix服务隔离
+  某个服务结点接口调用出现问题（连接超时等）影响此结点其它接口使用（连接占用），这样导致其它业务正常使用，并发量和吞吐量不高，至此引用
+  服务隔离。一个接口最多并发量占用10个连接，再调用直拒绝请求。隔离了调用方和服务方，处理两者之间，根据配置是否接收调用者请求调用服务，服务雪崩情况，连接资源不被占满。
+2.Hystrix使用
+   >>>引用spring-cloud-starter-netflix-hystrix
+   >>>开户hystrix功能-@EnableCircuitBreaker
+   >>>调用方法添加@HystrixCommand注解
+3.Hystrix隔离策略（HystrixCommand属性配置）
+    并发控制量手段》》信号量/线程池(默认策略)/全局变量AutomicInteger
+    并发测试
+    >>>引用包
+    <dependency>
+        <groupId>org.databene</groupId>
+        <artifactId>contiperf</artifactId>
+        <version>2.3.4</version>
+    </dependency>
+    >>>模拟11个线程并发请求接口，只有10个线程成功执行，有1个线程不被请求。（证明hystrix默认限制10个同时访问）
+    线程池策略(请求速度快，资源消耗大-开启线程)：用户请求线程后，hystrix线程池会分配线程对应执行请求。
+    信号量策略(请求速度慢，资源消耗小-不开启线程)：用户请求线程后，hystrix并不会开户线程，同一线程执行。
+4.Hystrix服务降级-服务请求失败，如何处理？
+        >>>fallbackMethod指定的服务降级方法签名必须与目标方法一致。
+        >>>在降级方法中，根据业务可以再次请求服务。
+        >>>降级方法可以再降级,在方法上再添加@HystrixCommand(fallbackMethod="")注解
+5.Hystrix数据监控
+  >>>创建工程，添加依赖包。
+    <dependency>
+      <groupId>org.springframework.cloud</groupId>
+      <artifactId>spring-cloud-starter-netflix-hystrix-dashboard</artifactId>
+    </dependency>
+  >>>开启监控功能,启动类中添加@EnableHystrixDashboard注解
+  >>>添加配置文件（与其它配置服务配置除端口其它基本一样）
+6.Hystrix服务熔断(限流)
+  Jmeter压力测试，熔断打开后，请求不能调用成功，过一段时间熔断再次关闭，请求才调用成功。
+  熔断机制通过Hystrix实现，Hystrix会监控微服务间调用的状况，当失败的调用到一定阈值，缺省是5秒内20次调用失败，就会启动熔断机制。熔断机制的注解是@HystrixCommand
+
+    熔断打开
+        请求不再进行调用当前服务，内部设置时钟一般为MTTR（平均故障处理时间），当打开时长达到所设时钟则进入半熔断状态
+    熔断关闭
+        熔断关闭不会对服务进行调用
+    熔断半开
+        部分请求根据规则调用当前服务，如果请求成功且符合规则则认为当前服务恢复正常，关闭熔断
+
+设计到断路器的三个重要参数：快照时间窗、请求总数阈值、错误百分比阈值
+    1.快照时间窗：断路器确定是否打开需要统计一些请求和错误数据，而统计的时间范围就是快照时间窗，默认为最近的10秒
+    2.请求总数阈值：在快照时间内，必须满足请求总数阈值才有资格熔断。默认为20，意味着在10秒内，如果该hystrix命令的调用次数不足20次，即使所有的请求都超时或其他原因失败，断路器都不会打开
+    3.错误百分比阈值：当请求总数在快照时间窗内超过阈值，比如发生了30次调用，如果在这30次调用中，有15次发生了超时异常，也就是超过50%的错误百分比，在默认设定50%阈值情况下，这时候就会将断路器打开
+断路器开启或关闭的条件:
+    1.时间窗内有一段时间
+    2.当满足一定的阈值的时候（默认10秒内超过20个请求次数）
+    3.当失败率达到一定的时候（默认10秒内超过50%的请求失败）
+    4.到达以上３个条件，断路器将会开启
+    5.当开启的时候，所有请求都不会进行转发
+    6.一段时间后（默认是5秒），这个时候断路器是半开状态，会让其中一个请求进行转发。如果成功，断路器会关闭，若失败，继续开启。重复5和6。
+断路器打开之后
+    1.再有请求调用的时候，将不会调用主逻辑，而是直接调用降级fallback。通过断路器，实现了自动地发现错误并将降级逻辑切换为主逻辑，减少响应延迟的效果。
+    2.原来的主逻辑要如何恢复呢？
+    对于这一问题，hystrix也为我们实现了自动恢复功能。当断路器打开，对主逻辑进行熔断之后，hystrix会启动一个休眠时间窗，在这个时间窗内，降级逻辑是临时的成为主逻辑，当休眠时间窗到期，熔断器将进入半开状态，释放一次请求到原来的主逻辑上，如果此次请求正常返回，那么断路器将继续闭合，主逻辑恢复，如果这次请求依然有问题，断路器继续进入打开状态，休眠时间窗重新计时。
+并非所有接口都使用Hystrix,如果没有并发需要的接口，不要使用Hystrix熔断功能，影响性能。
+对网络抖动（也可以ribbon设置retry功能）或者并发比较高的问题处理比较好，通过降级处理即时响应请求。
+
+7.HystrixCommand配置类HystrixCommandProperties
+
+Dubbo没有熔断功能！
+
+1.Feign解决什么问题？
+ 引用jar包
+ <dependency>
+     <groupId>org.springframework.cloud</groupId>
+     <artifactId>spring-cloud-starter-openfeign</artifactId>
+ </dependency>
+ 调用者添加注解
+ @EnableFeignClients
+调用方的服务层
+调用方传入对象，调用方和接收方都要加入@RequestBody注解序列化对象。@RequestParam
+Feign相当于是Hystrix和ribbon的再封装，这样的话Feign就会对所有接口都使用了Hystrix，但并非所有接口都需要Hystrix功能，
+当然也可以设置feign.hystrix.enabled=false关闭,但会全部关闭，所有这样有一点缺陷。
+优点：代码公用了
+缺点：耦合度高了
+如果不是使用公用接口，则需要保证调用方地址与提供方地址一样。
+2.fallback不能获取具体异常，fallbackFactory则可以获取详细异常信息。
+3.Feign过滤器可以包装异常，再传给降级处理方法。
+
+
+1.配置中心
+   抽取公共配置
+   配置文件动态加载，热加载
+包导入
+    <!--config-server-->
+    <dependency>
+      <groupId>org.springframework.cloud</groupId>
+      <artifactId>spring-cloud-config-server</artifactId>
+    </dependency>
+启动类
+@EnableConfigServer
+配置文件
+bootstrap.properties包括：
+    eureka配置
+    github连接配置
+    加密配置
+        location： Keystore 的文件路径
+        alias： key 的别名
+        password： keystore 的密码
+        secret： key的密码
+    健康配置
+
+#生成秘钥指令
+keypass(secret)=123456
+storepass(password)=p@ssw0rd
+#keytool -genkeypair -alias springcloud-config-server -keyalg RSA -dname "CN=Web Server,OU=China,O=www.micwsx.cn,L=Shanghai,S=Shanghai,C=China" -keypass 123456 -keystore springcloud-config-server.keystore -storepass p@ssw0rd -validity 365
+#keytool -genkeypair -alias springcloud-config-server -keyalg RSA -dname "CN=Web Server,OU=China,O=www.micwsx.cn,L=Shanghai,S=Shanghai,C=China" -keypass 123456 -keystore springcloud-config-server.jks -storepass p@ssw0rd -validity 365
+keytool -importkeystore -srckeystore springcloud-config-server.keystore -destkeystore springcloud-config-server.keystore -deststoretype pkcs12
+
+2.准备github仓库
+仓库中有配置文件（公共配置存放这些文件中）：
+	micro-order-dev.properties
+	micro-order-test.properties
+	micro-order.properties
+配置使用命令方式将文件上传到github仓库中
+#登录github创建springcloud-config-repository仓库
+#git clone https://github.com/micwsx/springcloud-config-repository.git
+#将配置文件复制到本地仓库目录下
+#添加文件git add .
+#提交文件git commit -m 'add configuration files'
+#上传到github远程仓库中git push
+#工具命令删除github本地仓库(文件夹后面没有master代表删除成功)
+find . -name ".git" | xargs rm -Rf
+
+3.配置属性值加解密地址：
+服务端Post请求http://localhost:9090/encrypt发送body明文数据root
+返回加密数据
+AQAMNtDCwE31pLm5OiEDw8fm7zWF39ZpIPJ/BLEdDsLiln93IcY+zhO4VUhWuqZ16oJcY1dhjAvoGiyRj3wcyyNyqmrXZr+Y4rjU1cPkz6xNx+ZxOmgC23ijXQZLaSvoXQJ1VQYWFW4PZsE6zRJzk+Z0x/ZCSd1wULmkJOQOYit1GTdf0UzlfToUlsHa5IJUMxIPop/Awa3Eb+Zr0p4abuJXFoUO0TxEHb3LHm3QzVE4AMWz77OXDkkOgHmR/xSLK9KleAIe3RfJNL+Ndb3gsDz5hCq2Qzb1GUD+1Bts85edjO999ptU3rfLn3HyzVYH5F8/J12Ht2gdHNDaoxRsFUrboo7b+AIPUba9yFvUClL2nHbj5juekjtQuz8uJsH19VA=
+http://localhost:9090/decrypt
+返回明文数据：root
+加密数据格式{cipher}开头，则服务器就会将密文自动解密后发送到各客户端。例：db.password={cipher}value
+
+4.客户端使用配置
+jar包
+    <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-starter-config</artifactId>
+    </dependency>
+配置
+#配置中心服务地址
+spring.cloud.config.enabled=true
+spring.cloud.config.uri=http://localhost:8085
+spring.cloud.config.profile=dev
+spring.cloud.config.label=master
+
+使用２种获取配置属性
+@Value()
+Environment
+
+客户端快速失败和重试
+spring.cloud.config.enabled=true
+spring.cloud.config.uri=http://localhost:9090
+spring.cloud.config.fail-fast=true
+spring.cloud.config.profile=dev
+
+重试加jar包
+<dependency>
+    <groupId>org.springframework.retry</groupId>
+    <artifactId>spring-retry</artifactId>
+</dependency>
+#重试机制
+spring.cloud.config.retry.multiplier=1.1
+spring.cloud.config.retry.max-interval=2000
+spring.cloud.config.retry.max-attempts=6
+
+5.配置修改后刷新配置
+配置属性修改后，配置中心服务自动会将本地配置文件更新(定时)。
+而配置中心的每个客户端需要手动向地址
+http://localhost:8094/actuator/refresh
+发送post请求，刷新配置。
+问题：Environment对象在运行时能获取最新的属性值，但是@Value注入和Bean注入属性后的值都不会更新，
+因为在Spring启动后这些值或对象都只会赋值一次。
+加入@RefreshScope注解能解决@Value值能更新，但别一个问题：Bean引用属性值还是不能获取最新值。
+
+6.配置中心集群
+每个配置中心的客户端都使用service-id不用uri指定配置服务器。
+#指定配置服务器
+#spring.cloud.config.uri=http://localhost:9090
+#根据eureka发现服务
+spring.cloud.config.discovery.enabled=true
+spring.cloud.config.discovery.service-id=springcloud-config-server
+注意：eureka.client.healthcheck.enabled=true不要在bootstrap.yml文件中配置，会有副作用。
+
+7.消息总线-解决配置中心更新，只要服务端和连接配置中心的所有客户端都需要引用bus，这样就不需要手动一一向refresh地址发送Post请求。
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-bus-amqp</artifactId>
+</dependency>
+#mq配置
+spring.rabbitmq.host=192.168.1.111
+spring.rabbitmq.port=5672
+spring.rabbitmq.username=michael
+spring.rabbitmq.password=michael
+spring.rabbitmq.virtual-host=my_vhost
+
+服务端消息总线Post请求地址http://localhost:9090/actuator/bus-refresh,返回结果为空，
+相当于配置中心向mq发送了消息，各客户端收到消息到更新配置属性。
+
+8.测试后发现集群后的配置中心都停机，服务还是能正常运行，当访问http://localhost:8094/actuator/health地址时，
+服务会重试获取配置中心，连接超时直到重试超过重试次数，但不影响正常运行。
+
+java version "1.8.0_251"
+Java(TM) SE Runtime Environment (build 1.8.0_251-b08)
+Java HotSpot(TM) 64-Bit Server VM (build 25.251-b08, mixed mode)
+
+9.自定义配置中心---解决手动刷新@Value()属性（尽管加入@RefreshScope注解）
+调用bus-fresh后，作用是将@RefreshScope注解的类重新实例化，使@Value值重新获取。
+思路：启动时加载配置数据到environment对象中拿到配置数据。
+修改后bean的属性值如何更新？当配置文件修改后，会通知给客户端执行某些操作(zookeeper监听节点变更事件)
+再一次获取environment对象，更新对象之前的属性所有属性值，再循环获取容器中scope为refresh所有的bean,销毁这些bean,
+然后再beanFactory.getBean()重新创建bean实例（如果这个bean是controller这个bean可以不用创建,controller是在请求时也会创建）。
+总结：使用自定义Scope管理bean，第一次创建bean后存放到缓存中，更新配置后，销毁并重新创建bean.这样保证是单例且能获取最新配置。
+发布/订阅功能：zookeeper-watch 结点变更, redis-消息订阅
+docker run -d -p 2181:2181 --name some-zookeeper zookeeper
+#进入zookeeper
+docker exec -it some-zookeeper /bash/bin
+#查看结点
+./bin/zkServer.sh status
+#客户端连接
+zkCli.sh
+#创建临时结点，客户端关闭时，节点也会删除，永久则去掉参数-e
+create -e /node1 data
+#获取结点值
+get /node
+#列出结点
+ls /node
+#删除结点
+delete /node
+查看节点
+stat
+
+
+
+10.请求超时时间
+#全局超时时间
+hystrix.command.default.execution.isolation.thread.timeoutInMilliseconds=5000
+#ribbon连接超时时间
+ribbon.ConnectTimeout=1000
+#ribbon处理超时时间
+ribbon.ReadTimeout=3000
+#重试配置(ribbon默认有重试机制)
+spring.cloud.loadbalancer.retry.enabled=true
+#是否对所有操作重试
+ribbon.OkToRetryOnAllOperations=true
+#切换实例的重试次数
+ribbon.MaxAutoRetriesNextServer=2
+#对当前实例的重试次数 当Eureka中可以找到服务，但是服务连不上时将会重试
+ribbon.MaxAutoRetries=2
+通过feign方式调用，如果直接通过hystrix，ribbon方式则没有时间搭配使用的效果(包括没有重试效果)。
+hystrix时间　      ribbon时间                  效果       　　
+大(5000毫秒)        小(没有重试,3000毫秒)     (4000毫秒>3000毫秒) hystrix时间为准，ribbon不重试直到超过ribbon超时时间，hystrix阶级获取feign.RetryableException异常对象。
+大(5000毫秒)      小(重试,3000毫秒)　         (2999毫秒+2999毫秒>5000毫秒) ribbon时间会启动重试，直到重试总花费时间超过hytrix的超时时间，降级获取HystrixTimeoutException异常对象。
+小(3000毫秒)          大(5000毫秒)             (4000毫秒>3000毫秒且4000毫秒<5000毫秒) 降级获取HystrixTimeoutException异常对象。
+
+1.zuul服务网关（对外服务）
+nginx后面有许多服务（需要配置多个服务，这样很麻烦）
+使用网关作用：减少配置，路由后面（或第三方服务），数据转发，流量入口，权限校验
+nginx->zuul/gateway(1个或2个集群)
+2.zuul搭建服务网关
+>>>jar包引入
+	spring-cloud-starter-netflix-zuul
+>>>启动类
+  @EnableZuulProxy
+>>>配置 有ribbon和hystrix功能，需要连接eureka获取服务列表
+　 eureka配置
+   服务配置:path和路由服务名称serviceId
+   默认没有添加服务path,zuul路由会显示eureka所有服务路由path为/serivceName/**,serviceId为serviceName
+   访问服务路由地址可查看所有路由信息http://localhost:9080/actuator/routes
+
+ 当客户端请求zuul服务地址http://localhost:7070/web/user/queryUser会转发到http://localhost:8094/user/queryUser
+
+３.动态路由
+　将路由配置放在配置中心中,只能有一个配置文件，否则会添加所有配置数据。
+　动态刷新bean
+
+4.过滤器
+有4种过滤器执行顺序依次是：
+pre（还没有进入下游服务）
+route（很少用，负责做路由，自己拿httpclient调用）
+post（后端服务返回结果之后）
+error　前几个过滤器有异常会被调用
+
+5.敏感信息头
+cookie,header,session
+
+6.zuul集群
+以不同端口启动zuul服务即可实现集群
+
+
+7.spring boot admin-监控所有服务实例
+jar包引入
+spring-boot-admin-starter-server
+spring-boot-admin-server-ui
+spring-cloud-starter-netflix-eureka-client
+每个监控的服务都要有健康状态jar包actuator
+启动类添加
+@EnableAdminServer
+@EnableEurekaClient
+
+8.spring boot admin文档地址：
+https://codecentric.github.io/spring-boot-admin/2.3.0
+
+10.添加代码到github
+
+>>>From IntelliJ
+select 'VCS'->impor in Version Control->Share project on GitHub
+entry password.
+select the files to commit
+>>>From command line
+create a new repository
+cd projects/newproject
+git init
+git add .
+git commit -m 'Initial commit'
+git remote add origin https://github.com/username/projectname.git
+git push -u origin master
+
+
+
+
+
+
+
+
+
+
+

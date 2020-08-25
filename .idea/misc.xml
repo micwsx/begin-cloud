@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="JavaScriptSettings">
+    <option name="languageLevel" value="ES6" />
+  </component>
+  <component name="MavenProjectsManager">
+    <option name="originalFiles">
+      <list>
+        <option value="$PROJECT_DIR$/springcloud-eureka/pom.xml" />
+        <option value="$PROJECT_DIR$/micro-order/pom.xml" />
+        <option value="$PROJECT_DIR$/micro-product/pom.xml" />
+        <option value="$PROJECT_DIR$/springcloud-dashboard/pom.xml" />
+        <option value="$PROJECT_DIR$/service-api/pom.xml" />
+        <option value="$PROJECT_DIR$/springcloud-config-server/pom.xml" />
+        <option value="$PROJECT_DIR$/springcloud-zuul/pom.xml" />
+        <option value="$PROJECT_DIR$/springcloud-admin/pom.xml" />
+      </list>
+    </option>
+  </component>
+  <component name="ProjectInspectionProfilesVisibleTreeState">
+    <entry key="Project Default">
+      <profile-state>
+        <expanded-state>
+          <State />
+        </expanded-state>
+        <selected-state>
+          <State>
+            <id>Angular</id>
+          </State>
+        </selected-state>
+      </profile-state>
+    </entry>
+  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_12" default="false" project-jdk-name="1.8" project-jdk-type="JavaSDK" />
+</project>
